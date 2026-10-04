@@ -6,6 +6,7 @@ use STD.textio.all;
 use work.pGTE.all;
 
 entity gte is
+   generic (PRECISION_CAPTURE : boolean := false);
    port 
    (
       clk1x                : in  std_logic;
@@ -36,7 +37,14 @@ entity gte is
       SS_DataRead          : out std_logic_vector(31 downto 0);
       SS_idle              : out std_logic;
       
-      debug_firstGTE       : out std_logic
+      debug_firstGTE       : out std_logic;
+
+      -- Experimental, disconnected in production. Valid accompanies the
+      -- registered gte_readData response for SXY0/1/2/SXYP reads only.
+      precision_enable     : in  std_logic := '0';
+      precision_read_valid : out std_logic;
+      precision_read_x     : out signed(31 downto 0);
+      precision_read_y     : out signed(31 downto 0)
    );
 end entity;
 
@@ -263,6 +271,29 @@ architecture arch of gte is
    signal SS_readData      : std_logic_vector(31 downto 0);
   
 begin 
+
+   precision_on : if PRECISION_CAPTURE generate
+      capture : entity work.gte_precision
+      port map (
+         clk => clk2x, ce => ce,
+         invalidate => reset or loading_savestate or SS_reset,
+         enable => precision_enable,
+         push => pushSXY,
+         projection_valid => not REG_FLAG(17),
+         projected_x => mac0Last, projected_y => mac0_result,
+         write_ena => gte_writeEna and clk2xIndex,
+         write_addr => gte_writeAddr,
+         read_ena => gte_readEna, read_addr => gte_readAddr,
+         read_valid => precision_read_valid,
+         read_x => precision_read_x, read_y => precision_read_y
+      );
+   end generate;
+
+   precision_off : if not PRECISION_CAPTURE generate
+      precision_read_valid <= '0';
+      precision_read_x <= (others => '0');
+      precision_read_y <= (others => '0');
+   end generate;
 
    gte_writeAddr <= SS_Adr                 when (loading_savestate = '1') else gte_writeAddr_in;
    gte_writeData <= unsigned(SS_DataWrite) when (loading_savestate = '1') else gte_writeData_in;

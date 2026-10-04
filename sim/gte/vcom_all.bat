@@ -3,6 +3,7 @@ vcom -2008 -quiet -work sim/psx ^
 ../../rtl/gte_mac0.vhd ^
 ../../rtl/gte_mac123.vhd ^
 ../../rtl/gte_UNRDivide.vhd ^
+../../rtl/gte_precision.vhd ^
 ../../rtl/gte.vhd
 
 vcom -quiet -work sim/tb ^
